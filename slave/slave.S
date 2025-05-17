@@ -1,5 +1,5 @@
 ;------------------------
-; Assembly Code
+; HOLO (Horizon-Oriented Laser Output)
 ;------------------------
 #define __SFR_OFFSET 0x00
 #include "avr/io.h"
@@ -30,6 +30,7 @@ agn:RCALL I2C_init          ;initialize TWI module
     MOV   R26, R27
     RCALL angle_to_timer
     RCALL  rotate_servo1
+
     RCALL I2C_init          ;initialize TWI module
     RCALL I2C_listen        ;listen to bus to be addressed
     RCALL I2C_read          ;read data byte
@@ -38,90 +39,233 @@ agn:RCALL I2C_init          ;initialize TWI module
     RCALL  rotate_servo2
     RJMP agn
 ;==============================================================
+angle_to_timer: ; FOR PROTEUS CIRCUIT
+    ; Check specific angle cases first
+    CPI   R26, 0
+    BRNE  not_0
+    LDI   R26, 61
+    RET
+not_0:
+    CPI   R26, 45
+    BRNE  not_45
+    LDI   R26, 77
+    RET
+
+not_45:
+    CPI   R26, 90
+    BRNE  not_90
+    LDI   R26, 93
+    RET
+
+not_90:
+    CPI   R26, 135
+    BRNE  not_135
+    LDI   R26, 108
+    RET
+
+not_135:
+    CPI   R26, 180
+    BRNE  interpolate
+    LDI   R26, 127
+    RET
+
+;-----------------------------------------------------------
+interpolate:
+    ; Determine the angle range
+    CPI   R26, 45
+    BRLT  range_0_45
+
+    CPI   R26, 90
+    BRLT  range_45_90
+
+    CPI   R26, 135
+    BRLO  range_90_135
+
+    CPI   R26, 180
+    BRLO  range_135_180
+
+    LDI   R26, 127
+    RET
+
+;------------------- 0° to 45° : 61 to 77
+range_0_45:
+    ; PWM = 61 + angle * 16 / 45
+    MOV   R20, R26        ; angle
+    LDI   R21, 16
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 61
+    ADD   R26, R18
+    RET
+
+;------------------- 45° to 90° : 77 to 93
+range_45_90:
+    SUBI  R26, 45         ; angle - 45
+    ; PWM = 77 + (angle * 16 / 45)
+    MOV   R20, R26
+    LDI   R21, 16
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 77
+    ADD   R26, R18
+    RET
+
+;------------------- 90° to 135° : 93 to 108
+range_90_135:
+    SUBI  R26, 90
+    ; PWM = 93 + (angle * 15 / 45)
+    MOV   R20, R26
+    LDI   R21, 15
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 93
+    ADD   R26, R18
+    RET
+
+;------------------- 135° to 180° : 108 to 127
+range_135_180:
+    SUBI  R26, 135
+    ; PWM = 108 + (angle * 19 / 45)
+    MOV   R20, R26
+    LDI   R21, 19
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 108
+    ADD   R26, R18
+    RET
+
+/* UNCOMMENT IF USING PHYSICAL CIRCUIT
 angle_to_timer:
-    CPI R26, 180
-    BREQ angle_180
-
-    CPI R26, 45
-    BRLT ang_lt_45
-
-    CPI R26, 90
-    BRLT ang_lt_90
-
-    CPI R26, 135
-    BRLT ang_lt_135
-
-    ; angle < 180
-ang_lt_180:
-    SUBI R26, 135          ; angle - 135
-    MOV R20, R26
-    LDI R21, 70
-    MUL R20, R21           ; R1:R0 = (angle-135) * 70
-    LDI R22, 45
-    MOV R18, R0
-    CLR R19
-    RCALL divide_16u
-    LDI R26, 110
-    ADD R26, R18
+    ; Direct matches first
+    CPI   R26, 0
+    BRNE  not_0
+    LDI   R26, 35
+    RET
+not_0:
+    CPI   R26, 45
+    BRNE  not_45
+    LDI   R26, 65
+    RET
+not_45:
+    CPI   R26, 90
+    BRNE  not_90
+    LDI   R26, 95
+    RET
+not_90:
+    CPI   R26, 135
+    BRNE  not_135
+    LDI   R26, 130
+    RET
+not_135:
+    CPI   R26, 180
+    BRNE  interpolate
+    LDI   R26, 158
     RET
 
-angle_180:
-    LDI R26, 180
+; -----------------------------------------------------------
+interpolate:
+    CPI   R26, 45
+    BRLT  range_0_45
+    CPI   R26, 90
+    BRLT  range_45_90
+    CPI   R26, 135
+    BRLO  range_90_135
+    CPI   R26, 180
+    BRLO  range_135_180
+    LDI   R26, 158
     RET
 
-ang_lt_135:
-    SUBI R26, 90
-    MOV R20, R26
-    LDI R21, 20
-    MUL R20, R21
-    LDI R22, 45
-    MOV R18, R0
-    CLR R19
-    RCALL divide_16u
-    LDI R26, 90
-    ADD R26, R18
+; 0°–45°: 35–65
+range_0_45:
+    MOV   R20, R26        ; R20 = angle
+    LDI   R21, 30         ; slope numerator
+    MUL   R20, R21
+    LDI   R22, 45         ; slope denominator
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 35
+    ADD   R26, R18
     RET
 
-ang_lt_90:
-    SUBI R26, 45
-    MOV R20, R26
-    LDI R21, 20
-    MUL R20, R21
-    LDI R22, 45
-    MOV R18, R0
-    CLR R19
-    RCALL divide_16u
-    LDI R26, 70
-    ADD R26, R18
+; 45°–90°: 65–95
+range_45_90:
+    SUBI  R26, 45
+    MOV   R20, R26
+    LDI   R21, 30
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 65
+    ADD   R26, R18
     RET
 
-ang_lt_45:
-    MOV R20, R26
-    LDI R21, 30
-    MUL R20, R21
-    LDI R22, 45
-    MOV R18, R0
-    CLR R19
-    RCALL divide_16u
-    LDI R26, 40
-    ADD R26, R18
+; 90°–135°: 95–130
+range_90_135:
+    SUBI  R26, 90
+    MOV   R20, R26
+    LDI   R21, 35
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 95
+    ADD   R26, R18
     RET
-divide_16u:
-    CLR R18
-    CLR R17
-    LDI R16, 16
+
+; 135°–180°: 130–158
+range_135_180:
+    SUBI  R26, 135
+    MOV   R20, R26
+    LDI   R21, 28
+    MUL   R20, R21
+    LDI   R22, 45
+    MOV   R18, R0
+    MOV   R19, R1
+    RCALL simple_div
+    LDI   R26, 130
+    ADD   R26, R18
+    RET
+*/
+
+; Simple division routine for 16-bit / 8-bit division
+; Input: R19:R18 = 16-bit dividend, R22 = 8-bit divisor
+; Output: R18 = result (quotient)
+simple_div:
+    CLR   R17          ; Clear remainder
+    LDI   R16, 16      ; 16 bits to process
+    
 div_loop:
-    LSL R19
-    ROL R18
-    ROL R17
-    CP  R17, R22
-    BRLO skip_sub
-    SUB R17, R22
-    INC R18
+    LSL   R18          ; Shift low byte left, bit 7 to carry
+    ROL   R19          ; Shift high byte left with carry
+    ROL   R17          ; Shift remainder left with carry
+    
+    CP    R17, R22     ; Compare remainder with divisor
+    BRLO  skip_sub     ; If remainder < divisor, skip subtraction
+    
+    SUB   R17, R22     ; Subtract divisor from remainder
+    INC   R18          ; Set result bit to 1
+    
 skip_sub:
-    DEC R16
-    BRNE div_loop
+    DEC   R16          ; Decrement bit counter
+    BRNE  div_loop     ; If not done, continue loop
     RET
+    
 I2C_init:
     LDI   R21, 0b10010000
     STS   TWAR, R21         ;store slave address 0b10010000

@@ -1,5 +1,5 @@
 ;------------------------
-; Assembly Code
+; HOLO (Horizon-Oriented Laser Output)
 ;------------------------
 #define __SFR_OFFSET 0x00
 #include "avr/io.h"
@@ -23,7 +23,7 @@ main:
     RCALL send_bytes      ;send command & data to MAX7219
     ;--------------------------------------------------------
     LDI   R17, 0x09       ;set decoding mode command
-    LDI   R18, 0b00001111 ;decoding byte
+    LDI   R18, 0b00000111 ;decoding byte
     RCALL send_bytes      ;send command & data to MAX7219
     ;--------------------------------------------------------
     LDI   R17, 0x0B       ;set scan limit command
@@ -34,7 +34,7 @@ main:
     LDI   R18, 0x01       ;turn ON MAX7219
     RCALL send_bytes      ;send command & data to MAX7219
     ;--------------------------------------------------------
-    LDI R16, 4
+    LDI R16, 3
     CLR R25
     RCALL I2C_init
     RJMP  MAX7219_disp_azi
@@ -78,6 +78,15 @@ MAX7219_disp_azi:
     LDI   R17, 0x06       ;select digit 5
     LDI   R18, 0x06       ;data = I
     RCALL send_bytes      ;send command & data to MAX7219
+    ;--------------------------------------------------------
+    LDI   R17, 0x05       ;select digit 4
+    LDI   R18, 0x00       ;data = space
+    RCALL send_bytes      ;send command & data to MAX7219
+    ;--------------------------------------------------------
+    LDI   R17, 0x04       ;select digit 3
+    LDI   R18, 0x00       ;data = space
+    RCALL send_bytes      ;send command & data to MAX7219
+    ;--------------------------------------------------------
     RJMP  keypad
 MAX7219_disp_alt:
 ;-----------------
@@ -191,20 +200,14 @@ match:
     RCALL I2C_stop        ;transmit STOP condition
 
     CLR   R24          ; Clear low byte
-    LDI   R16, 4
-
+    LDI   R16, 3
+    
     LDI   R18, 0       ; Value to display (0)
-
     LDI   R17, 1       ; Digit 1
     RCALL send_bytes
-
     LDI   R17, 2       ; Digit 2
     RCALL send_bytes
-
     LDI   R17, 3       ; Digit 3
-    RCALL send_bytes
-
-    LDI   R17, 4       ; Digit 4
     RCALL send_bytes
     
     TST R25
