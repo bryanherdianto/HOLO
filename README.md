@@ -46,6 +46,8 @@ Komunikasi dilakukan melalui protokol I2C dengan kecepatan 400 kHz dan urutan st
 
 ## Test results and performance evaluation
 
+### Testing in Proteus
+
 Sebelumnya, perlu dipahami bahwa dalam simulasi ini, servo motor yang digunakan adalah positional servo motor 180 derajat. Komponen servo pada Proteus menampilkan -90 derajat sebagai posisi 0 derajat. Lalu, 90 derajat menunjukkan posisi 180 derajat.
 
 Berikut adalah hasil run awal-awal dari sistem secara simulasi di Proteus:
@@ -80,6 +82,14 @@ Mode akan berubah dari azimuth ke altitude dan balik ke azimuth lagi. Maka, sete
 | ![picture 6](https://i.imgur.com/bClcpQW.png) | ![picture 7](https://i.imgur.com/o2Cp99c.png) |
 
 Dari tabel di atas, kita bisa melihat bahwa user telah memasukkan derajat azimuth sebesar 48 derajat. Display MAX7219 menampilkan mode azimuth dengan sudut 48 derajat. Setelah itu, user menekan tombol ❉ untuk mengirimkan data ke Arduino slave. Setelah itu, SERVO1 bergerak ke sudut 48 derajat (-90 + 48 = -42). Sama seperti sebelumnya, kalibrasi belum sepenuhnya akurat, tetapi masih dalam batas toleransi yang dapat diterima.
+
+### Testing in Physical Circuit
+
+Kalibrasi yang dilakukan pada sistem ini adalah kalibrasi manual. Servo motor yang digunakan pada proyek ini ada dua, yaitu servo motor fisik dan servo motor simulasi. Kalibrasi yang dilakukan berbeda untuk kedua servo itu. Oleh karena itu, terdapat dua kode dengan kalibrasi yang berbeda (silakan melakukan comment / uncomment pada bagian kalibrasi sesuai dengan servo yang digunakan). Selain itu, terdapat juga perbedaan sedikit pada rangkaian fisik. Rangkaian fisik menggunakan resistor pull-up 400 ohm pada pin SDA dan SCL serta resistor pull-up 10k ohm pada pin CS untuk display MAX7219. Kedua resistor berfungsi agar sistem dapat berjalan dengan baik dan lancar. Berikut adalah foto rangkaian fisik dan resistor pull-up yang digunakan:
+
+| Rangkaian Keseluruhan | Resistor Pull-Up |
+|----------------------|------------------|
+| ![picture 8](https://i.imgur.com/LnR2SIc.jpeg) | ![picture 9](https://i.imgur.com/tO0lgpl.jpeg) |
 
 ## Conclusion and future work
 
