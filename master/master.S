@@ -101,6 +101,14 @@ MAX7219_disp_alt:
     LDI   R17, 0x06       ;select digit 5
     LDI   R18, 0x0F       ;data = t
     RCALL send_bytes      ;send command & data to MAX7219
+    ;--------------------------------------------------------
+    LDI   R17, 0x05       ;select digit 4
+    LDI   R18, 0x00       ;data = space
+    RCALL send_bytes      ;send command & data to MAX7219
+    ;--------------------------------------------------------
+    LDI   R17, 0x04       ;select digit 3
+    LDI   R18, 0x00       ;data = space
+    RCALL send_bytes      ;send command & data to MAX7219
 ;===============================================================
 keypad:
     LDI   R20, 0xF0       ;low nibble port D i/p (column lines)
@@ -196,6 +204,8 @@ match:
     LDI   R27, 0b10010000 ;SLA(1001000) + W(0)
     RCALL I2C_write       ;write slave address SLA+W
     MOV   R27, R24        ;data byte to be transmitted
+    RCALL I2C_write       ;write data byte
+    MOV   R27, R25        ;servo selection byte (0 or 1)
     RCALL I2C_write       ;write data byte
     RCALL I2C_stop        ;transmit STOP condition
 

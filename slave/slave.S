@@ -11,7 +11,7 @@
 main:
 ;-----------
     SBI   DDRB, 4         ;pin PB4 o/p for servo control
-    SBI   DDRB, 3         ;pin PB3 o/p for servo control
+    SBI   DDRB, 0         ;pin PB0 o/p for servo control
 
     SBI   DDRB, 2           ; PB2 = output
     CBI   DDRD, 2           ; PD2 = input
@@ -22,24 +22,63 @@ main:
     LDI   R16, (1 << INT0)  ; Enable INT0
     OUT   EIMSK, r16
 
+    LDI   R31, 0
+
     SEI                     ; Enable global interrupts
 ;---------------------------------------------------------------
-agn:RCALL I2C_init          ;initialize TWI module
-    RCALL I2C_listen        ;listen to bus to be addressed
-    RCALL I2C_read          ;read data byte
-    MOV   R26, R27
-    RCALL angle_to_timer
-    RCALL  rotate_servo1
-
+agn:CLR   R27
     RCALL I2C_init          ;initialize TWI module
     RCALL I2C_listen        ;listen to bus to be addressed
-    RCALL I2C_read          ;read data byte
+    
+    ; First, check if this is a valid message for us
+    LDS   R21, TWSR        ;get TWI status
+    ANDI  R21, 0xF8        ;mask prescaler bits
+    CPI   R21, 0x60        ;SLA+W received, ACK sent?
+    BRNE  agn              ;if not, restart
+    
+    ; Now read the angle byte
+    RCALL I2C_read          ;read angle byte
     MOV   R26, R27
+    
+    ; Read the second byte (servo selection)
+    RCALL I2C_read          ;read servo selection byte
+    MOV   R31, R27          ;store in R31 (0=servo1, 1=servo2)
+    
+    ; Wait for STOP condition
+    LDI   R21, (1<<TWINT)|(1<<TWEN)|(1<<TWEA)
+    STS   TWCR, R21
+    
     RCALL angle_to_timer
-    RCALL  rotate_servo2
-    RJMP agn
+
+    CPI   R31, 0
+    BRNE  rotate_servo2
+    RJMP  rotate_servo1
 ;==============================================================
-angle_to_timer: ; FOR PROTEUS CIRCUIT
+rotate_servo2:
+;------------
+    LDI   R20, 10         ;count to give enough cycles of PWM
+l2: SBI   PORTB, 0
+    RCALL delay_timer0
+    CBI   PORTB, 0        ;send msec pulse to rotate servo
+    RCALL delay_20ms      ;wait 20ms before re-sending pulse
+    DEC   R20
+    BRNE  l2              ;go back & repeat PWM signal
+    CLR   R26
+    RJMP  agn
+rotate_servo1:
+;------------
+    LDI   R20, 10         ;count to give enough cycles of PWM
+l1: SBI   PORTB, 4
+    RCALL delay_timer0
+    CBI   PORTB, 4        ;send msec pulse to rotate servo
+    RCALL delay_20ms      ;wait 20ms before re-sending pulse
+    DEC   R20
+    BRNE  l1              ;go back & repeat PWM signal
+    CLR   R26
+    RJMP  agn
+/*
+; FOR PROTEUS CIRCUIT
+angle_to_timer:
     ; Check specific angle cases first
     CPI   R26, 0
     BRNE  not_0
@@ -50,25 +89,21 @@ not_0:
     BRNE  not_45
     LDI   R26, 77
     RET
-
 not_45:
     CPI   R26, 90
     BRNE  not_90
     LDI   R26, 93
     RET
-
 not_90:
     CPI   R26, 135
     BRNE  not_135
     LDI   R26, 108
     RET
-
 not_135:
     CPI   R26, 180
     BRNE  interpolate
     LDI   R26, 127
     RET
-
 ;-----------------------------------------------------------
 interpolate:
     ; Determine the angle range
@@ -86,7 +121,6 @@ interpolate:
 
     LDI   R26, 127
     RET
-
 ;------------------- 0° to 45° : 61 to 77
 range_0_45:
     ; PWM = 61 + angle * 16 / 45
@@ -130,7 +164,6 @@ range_90_135:
     LDI   R26, 93
     ADD   R26, R18
     RET
-
 ;------------------- 135° to 180° : 108 to 127
 range_135_180:
     SUBI  R26, 135
@@ -145,8 +178,8 @@ range_135_180:
     LDI   R26, 108
     ADD   R26, R18
     RET
-
-/* UNCOMMENT IF USING PHYSICAL CIRCUIT
+*/
+; FOR PHYSICAL CIRCUIT
 angle_to_timer:
     ; Direct matches first
     CPI   R26, 0
@@ -173,7 +206,6 @@ not_135:
     BRNE  interpolate
     LDI   R26, 158
     RET
-
 ; -----------------------------------------------------------
 interpolate:
     CPI   R26, 45
@@ -186,8 +218,7 @@ interpolate:
     BRLO  range_135_180
     LDI   R26, 158
     RET
-
-; 0°–45°: 35–65
+; 0°-45°: 35-65
 range_0_45:
     MOV   R20, R26        ; R20 = angle
     LDI   R21, 30         ; slope numerator
@@ -199,8 +230,7 @@ range_0_45:
     LDI   R26, 35
     ADD   R26, R18
     RET
-
-; 45°–90°: 65–95
+; 45°-90°: 65-95
 range_45_90:
     SUBI  R26, 45
     MOV   R20, R26
@@ -213,8 +243,7 @@ range_45_90:
     LDI   R26, 65
     ADD   R26, R18
     RET
-
-; 90°–135°: 95–130
+; 90°-135°: 95-130
 range_90_135:
     SUBI  R26, 90
     MOV   R20, R26
@@ -227,8 +256,7 @@ range_90_135:
     LDI   R26, 95
     ADD   R26, R18
     RET
-
-; 135°–180°: 130–158
+; 135°-180°: 130-158
 range_135_180:
     SUBI  R26, 135
     MOV   R20, R26
@@ -241,15 +269,11 @@ range_135_180:
     LDI   R26, 130
     ADD   R26, R18
     RET
-*/
-
-; Simple division routine for 16-bit / 8-bit division
 ; Input: R19:R18 = 16-bit dividend, R22 = 8-bit divisor
-; Output: R18 = result (quotient)
+; Output: R18 = quotient
 simple_div:
     CLR   R17          ; Clear remainder
     LDI   R16, 16      ; 16 bits to process
-    
 div_loop:
     LSL   R18          ; Shift low byte left, bit 7 to carry
     ROL   R19          ; Shift high byte left with carry
@@ -260,12 +284,10 @@ div_loop:
     
     SUB   R17, R22     ; Subtract divisor from remainder
     INC   R18          ; Set result bit to 1
-    
 skip_sub:
     DEC   R16          ; Decrement bit counter
     BRNE  div_loop     ; If not done, continue loop
     RET
-    
 I2C_init:
     LDI   R21, 0b10010000
     STS   TWAR, R21         ;store slave address 0b10010000
@@ -290,28 +312,6 @@ wt: LDS   R21, TWCR
     RJMP  wt                ;wait for data byte to be read
     ;----------------------------------------------------------
     LDS   R27, TWDR         ;store received byte
-    RET
-rotate_servo1:
-;------------
-    LDI   R20, 10         ;count to give enough cycles of PWM
-l1: SBI   PORTB, 4
-    RCALL delay_timer0
-    CBI   PORTB, 4        ;send msec pulse to rotate servo
-    RCALL delay_20ms      ;wait 20ms before re-sending pulse
-    DEC   R20
-    BRNE  l1              ;go back & repeat PWM signal
-    RCALL delay_ms        ;0.5s delay
-    RET
-rotate_servo2:
-;------------
-    LDI   R20, 10         ;count to give enough cycles of PWM
-l2: SBI   PORTB, 3
-    RCALL delay_timer0
-    CBI   PORTB, 3        ;send msec pulse to rotate servo
-    RCALL delay_20ms      ;wait 20ms before re-sending pulse
-    DEC   R20
-    BRNE  l2              ;go back & repeat PWM signal
-    RCALL delay_ms        ;0.5s delay
     RET
 ;===============================================================
 __vector_1:
@@ -350,16 +350,4 @@ l6: DEC   R23
     BRNE  l5
     DEC   R21
     BRNE  l4
-    RET
-;===============================================================
-delay_ms:                 ;delay 0.5s
-    LDI   R21, 255
-l7 :LDI   R22, 255
-l8 :LDI   R23, 41
-l9 :DEC   R23
-    BRNE  l9
-    DEC   R22
-    BRNE  l8
-    DEC   R21
-    BRNE  l7
     RET
