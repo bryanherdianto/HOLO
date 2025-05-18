@@ -1,4 +1,12 @@
 # HOLO (Horizon-Oriented Laser Output)
+```text
+Group: PA24
+
+Bryan Herdianto				    2306210885
+Filaga Tifira Muthi				2306208445
+Jesie Tenardi					2306162002
+Muhammad Riyan Satrio Wibowo	2306229323
+```
 
 ## Introduction to the problem and the solution
 
