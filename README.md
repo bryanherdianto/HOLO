@@ -1,6 +1,7 @@
 # HOLO (Horizon-Oriented Laser Output)
-```text
-Group: PA24
+
+```txt
+Group: PA23
 
 2306210885 - Bryan Herdianto		    
 2306208445 - Filaga Tifira Muthi		
