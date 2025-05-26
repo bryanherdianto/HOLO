@@ -100,6 +100,14 @@ Kalibrasi yang dilakukan pada sistem ini adalah kalibrasi manual. Servo motor ya
 |----------------------|------------------|
 | ![picture 8](https://i.imgur.com/LnR2SIc.jpeg) | ![picture 9](https://i.imgur.com/tO0lgpl.jpeg) |
 
+| Rangkaian Keseluruhan 2.0 |
+|---------------------------|
+| ![gambar_fisik8](https://github.com/user-attachments/assets/7de682b5-f1fe-4e28-a9e6-c50397319f6c) |
+
+| Pan Tilt Servo POV #1 | Pan Tilt Servo POV #2 |
+|----------------------|------------------|
+| ![gambar_fisik7](https://github.com/user-attachments/assets/f333ce52-dae9-4303-add2-3cb79d2e29e8) | ![gambar_fisik6](https://github.com/user-attachments/assets/15e22923-bb4e-40bd-8492-1a02572071a9) |
+
 ## Conclusion and future work
 
 Proyek ini telah berhasil melaksanakan fungsi-fungsi yang sesuai pada rangkaian fisik dan juga pada simulasi di Proteus. Berikut fitur-fitur yang berhasil dimiliki oleh sistem:
